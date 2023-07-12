@@ -912,7 +912,7 @@ const Whiteboard = () => {
       const img = new Image();
 
       img.onload = () => {
-        context.drawImage(img, offsetX, offsetY, 100, 100);
+        context.drawImage(img, offsetX, offsetY, imageWidth, imageHeight);
       };
 
       img.src = imageUrl;
