@@ -1,6 +1,22 @@
 import React, { useState, useRef, useEffect } from 'react';
-import rough from "roughjs/bundled/rough.esm";
 import { io } from "socket.io-client";
+import Drawer from "@mui/material/Drawer";
+import { FaPencilAlt } from "react-icons/fa"
+import { FiCircle } from "react-icons/fi"
+import { FaEraser } from "react-icons/fa"
+import { MdOutlineRectangle } from "react-icons/md"
+import { BsTriangle } from "react-icons/bs"
+import { BsHexagon } from "react-icons/bs"
+import { BsPentagon } from "react-icons/bs"
+import { BsArrowUpRight } from "react-icons/bs"
+import { GiStraightPipe } from "react-icons/gi"
+import { PiTextTBold } from "react-icons/pi"
+import { RiAddCircleFill } from "react-icons/ri"
+import { CgMenu } from "react-icons/cg"
+import { GrClose } from "react-icons/gr"
+import "./WhiteBoard.css"
+
+
 let sckt;
 const Whiteboard = () => {
   const canvasRef = useRef(null);
@@ -14,7 +30,7 @@ const Whiteboard = () => {
   const [text, setText] = useState('');
   const [textPosition, setTextPosition] = useState({ x: 0, y: 0 });
   const [shapeMode, setShapeMode] = useState(false);
-  const [shapeType, setShapeType] = useState('freehand');
+  const [shapeType, setShapeType] = useState('');
   const [shapeStartPos, setShapeStartPos] = useState({ x: 0, y: 0 });
   const [shapeEndPos, setShapeEndPos] = useState({ x: 0, y: 0 });
   const [contexts, setContexts] = useState([]);
@@ -30,9 +46,16 @@ const Whiteboard = () => {
   const [ imageHeight, setImageHeight ] = useState(100)
   const [ imageX, setImageX ] = useState(0)
   const [ imageY, setImageY ] = useState(0)
+  const [ snapShot, setSnapShot ] = useState(null)
+  const [open, setOpen] = useState(false)
+  const [ textBox, setTextBox ] = useState(false)
+  const blue = '#1718F1'
+  const yellow = '#FFC701'
   let canvas
   let ctx
   let eraserData = []
+  let roughCanvas
+  
 
   function updateBoard(data){
     // const canvas = canvasRef.current;
@@ -64,10 +87,11 @@ const Whiteboard = () => {
   }
 
   const startTextMode = (e) => {
+    setShapeMode(false)
     setDrawing(false);
     setTextMode(true);
     const { offsetX, offsetY } = e.nativeEvent;
-    setTextPosition({ x: offsetX, y: offsetY });
+    //setTextPosition({ x: offsetX, y: offsetY });
   };
 
   const handleTextChange = (e) => {
@@ -76,9 +100,9 @@ const Whiteboard = () => {
 
   const addText = () => {
     context.font = '16px Arial';
-    context.fillText(text, textPosition.x, textPosition.y);
+    context.fillText(text, textPosition.x, textPosition.y + 20);
     setText('');
-    setTextMode(false);
+    setTextBox(false)
     const dataURL = canvasRef.current.toDataURL();
     pushActionsStack(dataURL, currentPage)
     sckt.emit("addText", currentPage, dataURL)
@@ -90,7 +114,6 @@ const Whiteboard = () => {
   useEffect(() => {
     if(context){
 
-      
       sckt.on("eraseData", ({ eraserData, currentPageSource, dataURL }) => {
         eraseDataWithArray(eraserData, currentPageSource, dataURL);
         //pushActionsStack(dataURL, currentPageSource, -1, -1)
@@ -279,7 +302,24 @@ const Whiteboard = () => {
     sessionStorage.setItem("currentPage", 0)
     sessionStorage.setItem("redoStack", JSON.stringify([]))
     sessionStorage.setItem("undoStack", JSON.stringify([]))
+
+    const resizeCanvas = () => {
+      const vw = Math.max(
+        document.documentElement.clientWidth || 0,
+        window.innerWidth || 0
+      );
+      const vh = Math.max(
+        document.documentElement.clientHeight || 0,
+        window.innerHeight || 0
+      );
+
+      canvas.width = vw * 0.99500831; // Adjust the multiplier as needed
+      canvas.height = vh * 0.99500831; // Adjust the multiplier as needed
+    }
+
+    //window.addEventListener('resize', resizeCanvas);
     
+    resizeCanvas();
     sckt.on("received", ({ dataURL, currentPageSource }) => {
       
       setContexts((prev) => {
@@ -337,7 +377,7 @@ const Whiteboard = () => {
   }, []);
 
   function setUpSocket(){
-    const socket = io('http://localhost:8080'); // 'https://app.tutorly.com'
+    const socket = io('http://localhost:8081'); // 'https://app.tutorly.com'
     socket.emit("joinWhiteBoard", "board");
     return socket;
   }
@@ -364,6 +404,7 @@ const Whiteboard = () => {
     if (textMode){
         const { offsetX, offsetY } = e.nativeEvent;
         setTextPosition({ x: offsetX, y: offsetY })
+        setTextBox(true)
         return;
     }
     const { offsetX, offsetY } = e.nativeEvent;
@@ -371,6 +412,7 @@ const Whiteboard = () => {
         setShapeStartPos({ x: offsetX, y: offsetY });
         setDrawing(true);
         //sessionStorage.setItem("ui", canvasRef.current.toDataURL())
+        setSnapShot(context.getImageData(0, 0, context.canvas.width, context.canvas.height))
         return;
     }
     context.beginPath();
@@ -382,9 +424,15 @@ const Whiteboard = () => {
     if(imageFile) { return }
 
     if(shapeMode && drawing){
+        //const dataURL = canvasRef.current.toDataURL()
+        context.strokeStyle = pencilColor;
         const { offsetX, offsetY } = e.nativeEvent;
         setShapeEndPos({ x: offsetX, y: offsetY });
-        //drawShape()
+        drawShape()
+        // const { x: startX, y: startY } = shapeStartPos;
+        // const { x: endX, y: endY } = shapeEndPos;
+        // context.clearRect(startX + 1, startY + 1, endX - startX - 2, endY - startY - 2);
+        
         return;
     }
     if (!drawing || textMode) return;
@@ -398,6 +446,7 @@ const Whiteboard = () => {
       context.lineWidth = pencilSize;
       context.strokeStyle = pencilColor;
       context.stroke();
+
     }
   };
 
@@ -419,9 +468,12 @@ const Whiteboard = () => {
     if(imageFile) { return }
 
     if(shapeMode){
-      setShapeMode(false)
-      drawShape()
+      //setShapeMode(false)
+      //clearBoardPageSwitch()
+     // updateBoard(sessionStorage.getItem("ui"))
+      drawShape(false)
       setDrawing(false);
+      setSnapShot(null)
       //console.log(sessionStorage.getItem("ui"));
       //updateBoard(sessionStorage.getItem("ui"))
     }
@@ -448,8 +500,16 @@ const Whiteboard = () => {
     context.clearRect(0, 0, context.canvas.width, context.canvas.height);
   };
 
-  const toggleEraser = () => {
-    setEraser(!eraser);
+  const toggleEraserFalse = () => {
+    setShapeMode(false)
+    setTextMode(false)
+    setEraser(false);
+  };
+
+  const toggleEraserTrue = () => {
+    setShapeMode(false)
+    setTextMode(false)
+    setEraser(true);
   };
 
   const handlePencilSizeChange = (e) => {
@@ -476,16 +536,19 @@ const Whiteboard = () => {
 
   
   
-  const drawShape = () => {
+  const drawShape = (clearUI = true) => {
     const { x: startX, y: startY } = shapeStartPos;
     const { x: endX, y: endY } = shapeEndPos;
 
     //context.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-    //updateBoard(sessionStorage.getItem("ui"))
+    // updateBoard(sessionStorage.getItem("ui"))
+  
+    if(snapShot){
+      context.putImageData(snapShot, 0, 0)
+      console.log("Image Data");
+    }
+
     switch (shapeType) {
-      case 'square':
-        drawSquare(startX, startY, endX, endY);
-        break;
       case 'rectangle':
         drawRectangle(startX, startY, endX, endY);
         break;
@@ -496,7 +559,10 @@ const Whiteboard = () => {
         drawTriangle(startX, startY, endX, endY);
         break;
       case 'polygon':
-        drawPolygon(startX, startY, endX, endY);
+        drawPolygon(startX, startY, endX, endY, 6);
+        break;
+      case 'pentagon':
+        drawPolygon(startX, startY, endX, endY, 5);
         break;
       case 'line':
         drawLine(startX, startY, endX, endY);
@@ -509,16 +575,7 @@ const Whiteboard = () => {
     }
   };
 
-  const drawSquare = (startX, startY, endX, endY) => {
-    const width = endX - startX;
-    const height = endY - startY;
-
-    context.beginPath();
-    context.rect(startX, startY, width, height);
-    context.lineWidth = 2;
-    context.stroke();
-    context.closePath();
-  };
+ 
 
   const drawRectangle = (startX, startY, endX, endY) => {
     const width = endX - startX;
@@ -529,6 +586,7 @@ const Whiteboard = () => {
     context.lineWidth = 2;
     context.stroke();
     context.closePath();
+
   };
 
   const drawCircle = (startX, startY, endX, endY) => {
@@ -555,10 +613,10 @@ const Whiteboard = () => {
     context.closePath();
   };
 
-  const drawPolygon = (startX, startY, endX, endY) => {
+  const drawPolygon = (startX, startY, endX, endY, side) => {
     const width = endX - startX;
     const height = endY - startY;
-    const sides = 6; // Modify this to change the number of sides
+    const sides = side; // Modify this to change the number of sides
     const angle = (2 * Math.PI) / sides;
     const radius = Math.min(width, height) / 2;
     const centerX = startX + width / 2;
@@ -808,7 +866,7 @@ const Whiteboard = () => {
     // console.log(offsetX, offsetY);
     if(imageFile){
     // const reader = new FileReader();
-    
+    console.log("in");
     // reader.onload = (e) => {
     //   const imageUrl = e.target.result;
     //   setImageData(imageUrl);
@@ -896,68 +954,142 @@ const Whiteboard = () => {
   function toggleImageUpload(){
     setImageInputRefresh(prev => !prev)
   }
+
+  function dropImage(){
+    setImageInputRefresh(false)
+    setImageData(null)
+    setImageFile(null)
+    setImageX(0)
+    setImageY(0)
+    setImageWidth(100)
+    setImageHeight(100)
+    clearBoardPageSwitch()
+    updateBoard(sessionStorage.getItem("pageState"))
+  }
   return (
     <div>
-      <h1>Page {currentPage + 1}</h1>
-      {
+      {imageFile && <div className="flex-div message-div">Click anywhere on the board to place the image or click on cancel to drop the image<button className="z-index button" onClick={dropImage} >cancel</button></div>}
+      <div className='flex-div menu-bar'>
+      <div className="z-index" onClick={() => setOpen(true)}>
+            <CgMenu size = {25} color = {blue} />
+      </div>
+      </div>
+
+      <Drawer anchor="left" open={open} onClose={() => setOpen(false)} onOpen={() => setOpen(true)} >
+          <div className="close-button" onClick={() => setOpen(false)}>
+          <GrClose size = {25} color = {blue} />
+          </div>
+          <div className="range-image-options menu-options">
+          <label className="range-image-options">
+          Pencil Size:
+          <input className="z-index" type="range" min="1" max="20" value={pencilSize} onChange={handlePencilSizeChange} />
+          </label>
+          <label className="range-image-options">
+          Eraser Size:
+          <input className="z-index" type="range" min="5" max="50" value={eraserSize} onChange={handleEraserSizeChange} />
+          </label>
+          <label className="range-image-options">Pencil Color:
+          <input className="z-index" type="color" value={pencilColor} onChange={handlePencilColorChange} />
+          </label>
+          <button className="button">Save</button>
+           </div>
+      </Drawer>
+
+      <div className="page-numbers-container">
+        <div className="page-numbers">
+        {
           pages.map((page, index) => {
-            return <button key = {index} onClick = {() => changePage(page)}>{page + 1}</button>
+            return <div className={currentPage === page ? "page-number current-page" : "page-number"} key = {index} onClick = {() => changePage(page)}>{page + 1}</div>
           })
         }
-        <button onClick={addPage}>Add Page</button>
-        {(textMode && textPosition.x !== 0 && textPosition.y !== 0) && (
-        <div style={{ position: 'absolute', top: textPosition.y, left: textPosition.x}}>
-          <input type="text" value={text} onChange={handleTextChange} />
-          <button onClick={addText}>Add Text</button>
+        </div>
+        <div onClick={addPage} className="add-page">
+          <RiAddCircleFill color={blue} size={40} />
+        </div>
+      </div>
+        {(textBox && textMode && textPosition.x !== 0 && textPosition.y !== 0) && (
+        <div className="z-index" style={{ position: 'absolute', top: textPosition.y, left: textPosition.x}}>
+          <input className="z-index" type="text" value={text} onChange={handleTextChange} />
+          <button className="z-index button" onClick={addText}>Add Text</button>
         </div>
       )}
-      <button onClick={startTextMode}>Text Mode</button>
-      <button onClick={clearBoard}>Clear</button>
-      <button onClick={toggleEraser}>{eraser ? 'Draw' : 'Erase'}</button>
+      <div className="clear-div">
+        <button onClick={clearBoard} className="z-index button">Clear Page</button>
+      </div>
+
+      <div className="edit-options-container">
       
-       
-        <button onClick={() => setShape('square')}>Square</button>
-        <button onClick={() => setShape('rectangle')}>Rectangle</button>
-        <button onClick={() => setShape('triangle')}>Triangle</button>
-        <button onClick={() => setShape('polygon')}>Polygon</button>
-        <button onClick={() => setShape('line')}>Line</button>
-        <button onClick={() => setShape('arrow')}>Arrow</button>
-        <button onClick={() => setShape('circle')}>Circle</button>
-        <button onClick={undo}>Undo</button>
-        <button onClick={redo}>Redo</button>
-        <button onClick={toggleImageUpload} >Upload Image</button>
+      <div onClick={startTextMode} className={textMode ? "edit-option edit-option-background" : "edit-option"}>
+        <PiTextTBold color={textMode ? yellow : blue} size={20} />
+      </div>
+
+      <div onClick={toggleEraserFalse} className={(!eraser && !textMode && !shapeMode) ? "edit-option edit-option-background" : "edit-option"}>
+        <FaPencilAlt color={(!eraser && !textMode && !shapeMode) ? yellow : blue} size={20} />
+      </div>
+      
+      <div onClick={toggleEraserTrue} className={(eraser && !textMode && !shapeMode) ? "edit-option edit-option-background" : "edit-option"}>
+        <FaEraser color={(eraser && !textMode && !shapeMode) ? yellow : blue} size={20} />
+      </div>
+      
+      <div onClick={() => setShape('rectangle')} className={(!textMode && shapeMode && shapeType === 'rectangle') ? "edit-option edit-option-background" : "edit-option"}>
+        <MdOutlineRectangle color={(!textMode && shapeMode && shapeType === 'rectangle') ? yellow : blue} size={20} />
+      </div>
+
+        
+      <div onClick={() => setShape('triangle')} className={(!textMode && shapeMode && shapeType === 'triangle') ? "edit-option edit-option-background" : "edit-option"}>
+        <BsTriangle color={(!textMode && shapeMode && shapeType === 'triangle') ? yellow : blue} size={20} />
+      </div>
+      <div onClick={() => setShape('polygon')} className={(!textMode && shapeMode && shapeType === 'polygon') ? "edit-option edit-option-background" : "edit-option"}>
+        <BsHexagon color={(!textMode && shapeMode && shapeType === 'polygon') ? yellow : blue} size={20} />
+      </div>
+      <div onClick={() => setShape('pentagon')} className={(!textMode && shapeMode && shapeType === 'pentagon') ? "edit-option edit-option-background" : "edit-option"}>
+        <BsPentagon color={(!textMode && shapeMode && shapeType === 'pentagon') ? yellow : blue} size={20} />
+      </div>
+      <div onClick={() => setShape('line')} className={(!textMode && shapeMode && shapeType === 'line') ? "edit-option edit-option-background" : "edit-option"}>
+        <GiStraightPipe color={(!textMode && shapeMode && shapeType === 'line') ? yellow : blue} size={20} />
+      </div>
+      <div onClick={() => setShape('arrow')} className={(!textMode && shapeMode && shapeType === 'arrow') ? "edit-option edit-option-background" : "edit-option"}>
+        <BsArrowUpRight color={(!textMode && shapeMode && shapeType === 'arrow') ? yellow : blue} size={20} />
+      </div>
+      <div onClick={() => setShape('circle')} className={(!textMode && shapeMode && shapeType === 'circle') ? "edit-option edit-option-background" : "edit-option"}>
+        <FiCircle color={(!textMode && shapeMode && shapeType === 'circle') ? yellow : blue} size={20} />
+      </div>
+      </div>
+      <div className="undo-redo-options">
+        <button onClick={undo} className="z-index button">Undo</button>
+        <button onClick={redo} className="z-index button">Redo</button>
+      </div>
+      <div className="range-image-options image-up">
         {
-          imageInputRefresh && <input type="file" accept="image/*" onChange={handleImageUpload} />
+          imageInputRefresh && <input className="z-index button file-input" type="file" accept="image/*" onChange={handleImageUpload} />
         }
-      <div>
-        <label>
-          Pencil Size:
-          <input type="range" min="1" max="10" value={pencilSize} onChange={handlePencilSizeChange} />
+        <button onClick={toggleImageUpload} className="z-index button" >Upload Image</button>
+      </div>
+      {imageFile && <div className="range-image-options image-size image-in-flex">
+        
+        <label className="range-image-options">
+          <div className="flex-div">
+          <span className="image-in">Image Heigth:</span>
+          <input className="z-index image-wh" type="number" value={imageHeight} onChange={changeImageHeight} />
+          </div>
         </label>
-        <label>
-          Eraser Size:
-          <input type="range" min="5" max="50" value={eraserSize} onChange={handleEraserSizeChange} />
+        <label className="range-image-options">
+          <div className="flex-div">
+          <span className="image-in">Image Width:</span> 
+          <input className="z-index image-wh" type="number" value={imageWidth} onChange={changeImageWidth} />
+          </div>
         </label>
-        <label>Pencil Color:
-        <input type="color" value={pencilColor} onChange={handlePencilColorChange} />
-        </label>
-        <label>
-          Image Heigth:
-          <input type="number" value={imageHeight} onChange={changeImageHeight} />
-        </label>
-        <label>
-          Image Width:
-          <input type="number" value={imageWidth} onChange={changeImageWidth} />
-        </label>
-        <button onClick={redrawImage}>Apply Size</button>
-        <button onClick={fixImage}>Fix Image</button>
-  </div>
-    <div>
+        <div className="flex-div">
+          <button className="z-index button image-buttons" onClick={redrawImage}>Apply Size</button>
+          <button className="z-index button image-buttons" onClick={fixImage}>Fix Image</button>
+        </div>
+      </div>}
+    <div className="canvas-container">
       <canvas
         ref={canvasRef}
-        width={800}
-        height={600}
-        style={{ border: '1px solid #000' }}
+        // width={'1280vw'}
+        // height={'597vh'}
+        style={{ zIndex: '-10'}}
         onMouseDown={startDrawing}
         onMouseMove={draw}
         onMouseUp={stopDrawing}
