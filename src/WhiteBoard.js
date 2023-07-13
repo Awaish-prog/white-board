@@ -100,7 +100,7 @@ const Whiteboard = () => {
 
   const addText = () => {
     context.font = '16px Arial';
-    context.fillText(text, textPosition.x, textPosition.y + 20);
+    context.fillText(text, textPosition.x, textPosition.y + 22);
     setText('');
     setTextBox(false)
     const dataURL = canvasRef.current.toDataURL();
@@ -244,6 +244,21 @@ const Whiteboard = () => {
         }
       })
 
+      sckt.on("Joined", (boardData) => {
+        setContexts(boardData.contexts)
+        setPages(boardData.pages)
+        setImages(boardData.images)
+        sessionStorage.setItem("undoStack", JSON.stringify(boardData.undoStack))
+        sessionStorage.setItem("redoStack", JSON.stringify(boardData.redoStack))
+        for(let i = 0; i < boardData.images.length; i++){
+          if(boardData.images[i] && 0 === boardData.images[i].page){
+          
+            renderNewPageImage(boardData.images[i])
+          }
+        }
+        updateBoard(boardData.contexts[0])
+      })
+
       sckt.on("syncImage", ({ imageData, currentPageSource, imageX, imageY, imageWidth, imageHeight, dataURL }) => {
         setContexts((prev) => {
           const newContexts = [...prev]
@@ -260,8 +275,8 @@ const Whiteboard = () => {
         const undoObj = {
           dataURL: dataURL,
           page: currentPageSource,
-          x: -1,
-          y: -1
+          x: imageX,
+          y: imageY
         }
         // const newUndoStack = JSON.parse(sessionStorage.getItem("undoStack"))
         // newUndoStack.push(undoObj)
@@ -283,12 +298,14 @@ const Whiteboard = () => {
 
     
 
+
     return () => {
         sckt.off("eraseData");
         sckt.off("addText");
         sckt.off("undo")
         sckt.off("redo")
         sckt.off("syncImage")
+        sckt.off("Joined")
     }
   }, [context])
 
@@ -320,6 +337,7 @@ const Whiteboard = () => {
     //window.addEventListener('resize', resizeCanvas);
     
     resizeCanvas();
+    
     sckt.on("received", ({ dataURL, currentPageSource }) => {
       
       setContexts((prev) => {
@@ -367,12 +385,14 @@ const Whiteboard = () => {
     //   setRedoStack(prev => [...prev, {dataURL, page: currentPageSource, x, y, index}])
     // })
     
-    
+
+    // const handleVisibilityChange = 
+
+  
+
     return () => {
         sckt.off("received");
         sckt.off("addPage")
-       // sckt.off("undoStacks")
-        
     }
   }, []);
 
@@ -697,7 +717,7 @@ const Whiteboard = () => {
       return newContexts
     })
     clearBoardPageSwitch()
-    updateBoard(contexts[page])
+    
     console.log(images);
     for(let i = 0; i < images.length; i++){
       if(images[i] && page === images[i].page){
@@ -705,6 +725,7 @@ const Whiteboard = () => {
         renderNewPageImage(images[i])
       }
     }
+    updateBoard(contexts[page])
     setCurrentPage(page)
     sessionStorage.setItem("currentPage", page)
   }

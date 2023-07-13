@@ -4,10 +4,20 @@
     --black: #000000;
 }
 
+@font-face {
+    font-family: "Neue Montreal";
+    src: url("./fonts/_NeueMontreal-Regular.otf");
+}
+@font-face {
+    font-family: "PPWoodland";
+    src: url("./fonts/_PPWoodland-Regular.otf");
+}
+
 html, body, #root {
     margin: 0;
     width: 100%;
     height: 100%;
+    font-family: "Neue Montreal", sans-serif;
 }
 
 .edit-options-container {
@@ -162,7 +172,7 @@ html, body, #root {
     font-weight: bolder;
     position: absolute;
     top: 5px;
-    left: 30vw;
+    left: 25vw;
     font-size: large;
     max-width: 60vw;
 }
