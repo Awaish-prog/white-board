@@ -54,7 +54,6 @@ const Whiteboard = () => {
   let canvas
   let ctx
   let eraserData = []
-  let roughCanvas
   
 
   function updateBoard(data){
@@ -309,17 +308,19 @@ const Whiteboard = () => {
     }
   }, [context])
 
+  
+
   useEffect(() => {
     canvas = canvasRef.current;
     ctx = canvas.getContext('2d');
     setContext(ctx);
   
-
     sckt = setUpSocket();
     sessionStorage.setItem("currentPage", 0)
     sessionStorage.setItem("redoStack", JSON.stringify([]))
     sessionStorage.setItem("undoStack", JSON.stringify([]))
-
+    //
+    
     const resizeCanvas = () => {
       const vw = Math.max(
         document.documentElement.clientWidth || 0,
@@ -423,7 +424,7 @@ const Whiteboard = () => {
     if(imageFile) { return }
     if (textMode){
         const { offsetX, offsetY } = e.nativeEvent;
-        setTextPosition({ x: offsetX, y: offsetY })
+        setTextPosition({ x: offsetX, y: offsetY - 18 })
         setTextBox(true)
         return;
     }
@@ -462,11 +463,12 @@ const Whiteboard = () => {
       context.clearRect(offsetX - eraserSize / 2, offsetY - eraserSize / 2, eraserSize, eraserSize);
       eraserData.push([offsetX - eraserSize / 2, offsetY - eraserSize / 2, eraserSize, eraserSize]);
      } else {
+      
       context.lineTo(offsetX, offsetY);
       context.lineWidth = pencilSize;
       context.strokeStyle = pencilColor;
       context.stroke();
-
+      canvasRef.current.globalCompositeOperation = 'destination-over';
     }
   };
 
@@ -987,9 +989,13 @@ const Whiteboard = () => {
     clearBoardPageSwitch()
     updateBoard(sessionStorage.getItem("pageState"))
   }
+
+  function saveData(){
+    sckt.emit("saveData", "board")
+  }
   return (
-    <div>
-      {imageFile && <div className="flex-div message-div">Click anywhere on the board to place the image or click on cancel to drop the image<button className="z-index button" onClick={dropImage} >cancel</button></div>}
+    <div className={textMode ? "text-cursor" : eraser ? "eraser-cursor" : "pen-cursor"}>
+      {imageFile && <p className="flex-div message-div"><button className="z-index button" onClick={dropImage} >Drop image</button></p>}
       <div className='flex-div menu-bar'>
       <div className="z-index" onClick={() => setOpen(true)}>
             <CgMenu size = {25} color = {blue} />
@@ -1012,8 +1018,8 @@ const Whiteboard = () => {
           <label className="range-image-options">Pencil Color:
           <input className="z-index" type="color" value={pencilColor} onChange={handlePencilColorChange} />
           </label>
-          <button className="button">Save</button>
-           </div>
+          <button className="button" onClick={saveData}>Save</button>
+          </div>
       </Drawer>
 
       <div className="page-numbers-container">
@@ -1030,7 +1036,7 @@ const Whiteboard = () => {
       </div>
         {(textBox && textMode && textPosition.x !== 0 && textPosition.y !== 0) && (
         <div className="z-index" style={{ position: 'absolute', top: textPosition.y, left: textPosition.x}}>
-          <input className="z-index" type="text" value={text} onChange={handleTextChange} />
+          <input className="z-index" type="text" value={text} onChange={handleTextChange}/>
           <button className="z-index button" onClick={addText}>Add Text</button>
         </div>
       )}
@@ -1082,7 +1088,7 @@ const Whiteboard = () => {
       </div>
       <div className="range-image-options image-up">
         {
-          imageInputRefresh && <input className="z-index button file-input" type="file" accept="image/*" onChange={handleImageUpload} />
+          imageInputRefresh && <input className="z-index button file-input" type="file" accept="image/*" onChange={handleImageUpload} disabled={imageFile} />
         }
         <button onClick={toggleImageUpload} className="z-index button" >Upload Image</button>
       </div>
@@ -1108,8 +1114,6 @@ const Whiteboard = () => {
     <div className="canvas-container">
       <canvas
         ref={canvasRef}
-        // width={'1280vw'}
-        // height={'597vh'}
         style={{ zIndex: '-10'}}
         onMouseDown={startDrawing}
         onMouseMove={draw}

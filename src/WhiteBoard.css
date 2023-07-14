@@ -109,6 +109,16 @@ html, body, #root {
     bottom: 5px;
     left: 5px;
 }
+.pen-cursor {
+    cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='7' fill='black' stroke='white' stroke-width='2' fill-opacity='0.7'/%3E%3C/svg%3E") 8 8, pointer;
+}
+.eraser-cursor {
+    cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='7' fill='white' stroke='black' stroke-width='2'/%3E%3C/svg%3E") 8 8, pointer;
+}
+.text-cursor {
+    cursor: text;
+}
+
 .button {
     width: fit-content;
     padding: 5px;
@@ -167,14 +177,14 @@ html, body, #root {
 }
 
 .message-div {
-    align-items: center;
-    justify-content: center;
     font-weight: bolder;
+    width: fit-content;
     position: absolute;
     top: 5px;
-    left: 25vw;
+    margin: 0 auto 0 auto;
     font-size: large;
     max-width: 60vw;
+    left: 40vw
 }
 
 
