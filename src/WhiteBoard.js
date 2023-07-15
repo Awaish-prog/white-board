@@ -18,7 +18,7 @@ import "./WhiteBoard.css"
 
 
 let sckt;
-const Whiteboard = () => {
+const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, deleteFromStack }) => {
   const canvasRef = useRef(null);
   const [drawing, setDrawing] = useState(false);
   const [context, setContext] = useState(null);
@@ -36,8 +36,6 @@ const Whiteboard = () => {
   const [contexts, setContexts] = useState([]);
   const [currentPage, setCurrentPage] = useState(0);
   const [ pages, setPages ] = useState([0])
-  const [ actionsStack, setActionsStack ] = useState([])
-  const [ redoStack, setRedoStack ] = useState([])
   const [imageData, setImageData] = useState(null);
   const [ images, setImages ] = useState([])
   const [ imageInputRefresh, setImageInputRefresh ] = useState(false)
@@ -54,12 +52,11 @@ const Whiteboard = () => {
   let canvas
   let ctx
   let eraserData = []
+
+  
   
 
   function updateBoard(data){
-    // const canvas = canvasRef.current;
-    // const ctx = canvas.getContext('2d');
-    // setContext(ctx);
     canvas = canvasRef.current;
     ctx = canvas.getContext('2d');
     setContext(ctx);
@@ -74,15 +71,11 @@ const Whiteboard = () => {
   }
 
   function pushActionsStack(dataURL, page, x = -1, y = -1){
-    // setActionsStack(prev => [...prev, { dataURL, page, x, y }])
-    // const newUndoStack = JSON.parse(sessionStorage.getItem("undoStack"))
-    // newUndoStack.push({ dataURL, page, x, y })
-    // sessionStorage.setItem("redoStack", JSON.stringify(newUndoStack))
     addInStack("undoStack", { dataURL, page, x, y })
   }
 
   function pushRedoStack({ dataURL, currentPageSource, x, y, index }){
-    setRedoStack(prev => [...prev, { dataURL, page: currentPageSource, x, y, index }])
+    //setRedoStack(prev => [...prev, { dataURL, page: currentPageSource, x, y, index }])
   }
 
   const startTextMode = (e) => {
@@ -115,19 +108,17 @@ const Whiteboard = () => {
 
       sckt.on("eraseData", ({ eraserData, currentPageSource, dataURL }) => {
         eraseDataWithArray(eraserData, currentPageSource, dataURL);
-        //pushActionsStack(dataURL, currentPageSource, -1, -1)
+        
         const undoObj = {
           dataURL: dataURL,
           page: currentPageSource,
           x: -1,
           y: -1
         }
-        // const newUndoStack = JSON.parse(sessionStorage.getItem("undoStack"))
-        // newUndoStack.push(undoObj)
-        // setRedoStack(newUndoStack)
+        
 
         addInStack('undoStack', undoObj)
-        //sessionStorage.setItem("redoStack", JSON.stringify(newUndoStack))
+        
       })
       
       sckt.on("addText", ({ currentPageSource, dataURL }) => {
@@ -136,7 +127,7 @@ const Whiteboard = () => {
           newContexts[currentPageSource] = dataURL
           return newContexts
         })
-        //pushActionsStack(dataURL, currentPageSource, -1, -1)
+       
 
         const undoObj = {
           dataURL: dataURL,
@@ -144,12 +135,10 @@ const Whiteboard = () => {
           x: -1,
           y: -1
         }
-        // const newUndoStack = JSON.parse(sessionStorage.getItem("undoStack"))
-        // newUndoStack.push(undoObj)
-        // setRedoStack(newUndoStack)
+        
 
         addInStack("undoStack", undoObj)
-        //sessionStorage.setItem("redoStack", JSON.stringify(newUndoStack))
+        
         if(currentPageSource === Number(sessionStorage.getItem("currentPage")) || (currentPageSource === 0 && !sessionStorage.getItem("currentPage"))){
           updateBoard(dataURL)
         }
@@ -162,25 +151,10 @@ const Whiteboard = () => {
           return newContexts
         })
 
-        // const newUndoStack = JSON.parse(sessionStorage.getItem("undoStack"))
-        // newUndoStack.splice(index, 1)
-
-        // setActionsStack(newUndoStack)
-        // sessionStorage.setItem("redoStack", JSON.stringify(newUndoStack))
+        
 
         removeFromStack("undoStack", index)
 
-        // setActionsStack((prev) => {
-        //   const newA = [...prev]
-        //   newA.splice(index, 1)
-        //   return newA
-        // })
-        
-        
-        // const newRedoStack = JSON.parse(sessionStorage.getItem("redoStack"))
-        // newRedoStack.push({ dataURL, currentPageSource, x, y, index })
-        // setRedoStack(newRedoStack)
-        // sessionStorage.setItem("redoStack", JSON.stringify(newRedoStack))
 
         addInStack("redoStack", obj)
         
@@ -215,27 +189,11 @@ const Whiteboard = () => {
           newContexts[undoObj.page] = undoObj.dataURL
           return newContexts
         })
-        // setRedoStack((prev) => {
-        //   const newActionsStack = [...prev]
-        //   newActionsStack.splice(index, 1)
-        //   return newActionsStack
-        // })
+      
         removeFromStack("redoStack", index)
 
         addInStack("undoStack", undoObj)
-        // const newRedoStack = JSON.parse(sessionStorage.getItem("redoStack"))
-        // newRedoStack.splice(index, 1)
-
-        // setActionsStack(newRedoStack)
-        // sessionStorage.setItem("redoStack", JSON.stringify(newRedoStack))
-
         
-        //pushActionsStack(undoObj.dataURL, undoObj.currentPageSource, undoObj.x, undoObj.y)
-
-        // const newUndoStack = JSON.parse(sessionStorage.getItem("undoStack"))
-        // newUndoStack.push(undoObj)
-        // setRedoStack(newUndoStack)
-        // sessionStorage.setItem("redoStack", JSON.stringify(newUndoStack))
         
         if(undoObj.page === Number(sessionStorage.getItem("currentPage")) || (undoObj.page === 0 && !sessionStorage.getItem("currentPage"))){
           clearBoardPageSwitch()
@@ -247,8 +205,9 @@ const Whiteboard = () => {
         setContexts(boardData.contexts)
         setPages(boardData.pages)
         setImages(boardData.images)
-        sessionStorage.setItem("undoStack", JSON.stringify(boardData.undoStack))
-        sessionStorage.setItem("redoStack", JSON.stringify(boardData.redoStack))
+        // sessionStorage.setItem("undoStack", JSON.stringify(boardData.undoStack))
+        // sessionStorage.setItem("redoStack", JSON.stringify(boardData.redoStack))
+        
         for(let i = 0; i < boardData.images.length; i++){
           if(boardData.images[i] && 0 === boardData.images[i].page){
           
@@ -277,10 +236,7 @@ const Whiteboard = () => {
           x: imageX,
           y: imageY
         }
-        // const newUndoStack = JSON.parse(sessionStorage.getItem("undoStack"))
-        // newUndoStack.push(undoObj)
-        // setRedoStack(newUndoStack)
-        // sessionStorage.setItem("redoStack", JSON.stringify(newUndoStack))
+        
   
         addInStack("undoStack", undoObj)
         if(currentPageSource === Number(sessionStorage.getItem("currentPage")) || (currentPageSource === 0 && !sessionStorage.getItem("currentPage"))){
@@ -317,9 +273,11 @@ const Whiteboard = () => {
   
     sckt = setUpSocket();
     sessionStorage.setItem("currentPage", 0)
-    sessionStorage.setItem("redoStack", JSON.stringify([]))
-    sessionStorage.setItem("undoStack", JSON.stringify([]))
+    // sessionStorage.setItem("redoStack", JSON.stringify([]))
+    // sessionStorage.setItem("undoStack", JSON.stringify([]))
     //
+    initialiseStack("redoStack", [])
+    initialiseStack("undoStack", [])
     
     const resizeCanvas = () => {
       const vw = Math.max(
@@ -335,7 +293,7 @@ const Whiteboard = () => {
       canvas.height = vh * 0.99500831; // Adjust the multiplier as needed
     }
 
-    //window.addEventListener('resize', resizeCanvas);
+   
     
     resizeCanvas();
     
@@ -348,7 +306,7 @@ const Whiteboard = () => {
         return newContexts
       })
 
-      //pushActionsStack(dataURL, currentPageSource, -1, -1)
+      
       
       const undoObj = {
         dataURL: dataURL,
@@ -356,10 +314,7 @@ const Whiteboard = () => {
         x: -1,
         y: -1
       }
-      // const newUndoStack = JSON.parse(sessionStorage.getItem("undoStack"))
-      // newUndoStack.push(undoObj)
-      // setRedoStack(newUndoStack)
-      // sessionStorage.setItem("redoStack", JSON.stringify(newUndoStack))
+      
 
       addInStack("undoStack", undoObj)
       
@@ -375,19 +330,7 @@ const Whiteboard = () => {
     })
 
     
-    // sckt.on("undoStacks", ({ dataURL, currentPageSource, x, y, index }) => {
-
-    //   setActionsStack((prev) => {
-    //     const newA = [...prev]
-    //     newA.splice(index, 1)
-    //     return newA
-    //   })
-
-    //   setRedoStack(prev => [...prev, {dataURL, page: currentPageSource, x, y, index}])
-    // })
     
-
-    // const handleVisibilityChange = 
 
   
 
@@ -398,26 +341,31 @@ const Whiteboard = () => {
   }, []);
 
   function setUpSocket(){
-    const socket = io('http://localhost:8081'); // 'https://app.tutorly.com'
+    const socket = io('http://localhost:8001'); // 'https://app.tutorly.com'
     socket.emit("joinWhiteBoard", "board");
     return socket;
   }
 
   function addInStack(stackName, item){
-    let newStack = JSON.parse(sessionStorage.getItem(stackName))
-    if(!newStack){
-      sessionStorage.setItem(stackName, JSON.stringify([]))
-      newStack = JSON.parse(sessionStorage.getItem(stackName))
-    }
-    newStack.push(item)
-    sessionStorage.setItem(stackName, JSON.stringify(newStack))
+    // let newStack = JSON.parse(sessionStorage.getItem(stackName))
+    // if(!newStack){
+    //   sessionStorage.setItem(stackName, JSON.stringify([]))
+    //   newStack = JSON.parse(sessionStorage.getItem(stackName))
+    // }
+    // newStack.push(item)
+    // sessionStorage.setItem(stackName, JSON.stringify(newStack))
+
+    insertInStack(stackName, item)
+    
   }
 
   function removeFromStack(stackName, index){
-    console.log(index);
-    const newStack = JSON.parse(sessionStorage.getItem(stackName))
-    newStack.splice(index, 1)
-    sessionStorage.setItem(stackName, JSON.stringify(newStack))
+    // console.log(index);
+    // const newStack = JSON.parse(sessionStorage.getItem(stackName))
+    // newStack.splice(index, 1)
+    // sessionStorage.setItem(stackName, JSON.stringify(newStack))
+
+    deleteFromStack(stackName, index)
   }
 
   const startDrawing = (e) => {
@@ -432,7 +380,7 @@ const Whiteboard = () => {
     if(shapeMode){
         setShapeStartPos({ x: offsetX, y: offsetY });
         setDrawing(true);
-        //sessionStorage.setItem("ui", canvasRef.current.toDataURL())
+        
         setSnapShot(context.getImageData(0, 0, context.canvas.width, context.canvas.height))
         return;
     }
@@ -445,14 +393,11 @@ const Whiteboard = () => {
     if(imageFile) { return }
 
     if(shapeMode && drawing){
-        //const dataURL = canvasRef.current.toDataURL()
+        
         context.strokeStyle = pencilColor;
         const { offsetX, offsetY } = e.nativeEvent;
         setShapeEndPos({ x: offsetX, y: offsetY });
         drawShape()
-        // const { x: startX, y: startY } = shapeStartPos;
-        // const { x: endX, y: endY } = shapeEndPos;
-        // context.clearRect(startX + 1, startY + 1, endX - startX - 2, endY - startY - 2);
         
         return;
     }
@@ -490,14 +435,11 @@ const Whiteboard = () => {
     if(imageFile) { return }
 
     if(shapeMode){
-      //setShapeMode(false)
-      //clearBoardPageSwitch()
-     // updateBoard(sessionStorage.getItem("ui"))
+      
       drawShape(false)
       setDrawing(false);
       setSnapShot(null)
-      //console.log(sessionStorage.getItem("ui"));
-      //updateBoard(sessionStorage.getItem("ui"))
+     
     }
     if (textMode) return;
     context.closePath();
@@ -562,8 +504,6 @@ const Whiteboard = () => {
     const { x: startX, y: startY } = shapeStartPos;
     const { x: endX, y: endY } = shapeEndPos;
 
-    //context.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-    // updateBoard(sessionStorage.getItem("ui"))
   
     if(snapShot){
       context.putImageData(snapShot, 0, 0)
@@ -742,7 +682,8 @@ const Whiteboard = () => {
 
   function undo(){
 
-    const actionsStack = JSON.parse(sessionStorage.getItem("undoStack"))
+    const actionsStack = undoStack // JSON.parse(sessionStorage.getItem("undoStack"))
+    
 
     if(!actionsStack.length) { return }
 
@@ -754,29 +695,11 @@ const Whiteboard = () => {
       if(actionsStack[i].page === currentPage){
         x = actionsStack[i].x
         y = actionsStack[i].y
-        //setRedoStack(prev => [...prev, actionsStack[i]])
-
-        // const newRedoStack = JSON.parse(sessionStorage.getItem("redoStack"))
-        // newRedoStack.push(actionsStack[i])
-        // setRedoStack(newRedoStack)
-        // sessionStorage.setItem("redoStack", JSON.stringify(newRedoStack))
+        
         obj = actionsStack[i]
         addInStack("redoStack", actionsStack[i])
 
         removeFromStack("undoStack", i)
-
-        // const newUndoStack = JSON.parse(sessionStorage.getItem("undoStack"))
-        // newUndoStack.splice(i, 1)
-
-        // setActionsStack(newUndoStack)
-        // sessionStorage.setItem("redoStack", JSON.stringify(newUndoStack))
-        //sckt.emit("redo", actionsStack[i])
-        // setActionsStack((prev) => {
-        //   const newStack = [...prev]
-        //   newStack.splice(i, 1)
-        //   return newStack
-        // })
-
 
         dataIndex = i
         break  
@@ -819,36 +742,21 @@ const Whiteboard = () => {
 
   function redo(){
 
-    const redoStack = JSON.parse(sessionStorage.getItem("redoStack"))
+    const redoStack1 = redoStack //JSON.parse(sessionStorage.getItem("redoStack"))
 
-    if(!redoStack.length) { return }
-    console.log(redoStack);
-    for(let i = redoStack.length - 1; i >= 0; i--){
-      if(redoStack[i].page === currentPage){
-        //setActionsStack(prev => [...prev, redoStack[i]])
-
-        // const newUndoStack = JSON.parse(sessionStorage.getItem("undoStack"))
-        // newUndoStack.push(redoStack[i])
-        // setRedoStack(newUndoStack)
-        // sessionStorage.setItem("redoStack", JSON.stringify(newUndoStack))
+    if(!redoStack1.length) { return }
+    console.log(redoStack1);
+    for(let i = redoStack1.length - 1; i >= 0; i--){
+      if(redoStack1[i].page === currentPage){
 
         clearBoardPageSwitch()
-        updateBoard(redoStack[i].dataURL)
-        sckt.emit("redo", redoStack[i], i)
+        updateBoard(redoStack1[i].dataURL)
+        sckt.emit("redo", redoStack1[i], i)
 
-        addInStack("undoStack", redoStack[i])
+        addInStack("undoStack", redoStack1[i])
 
         removeFromStack("redoStack", i)
-        // setRedoStack((prev) => {
-        //   const newStack = [...prev]
-        //   newStack.splice(i, 1)
-        //   return newStack
-        // })
-        // const newRedoStack = JSON.parse(sessionStorage.getItem("redoStack"))
-        // newRedoStack.splice(i, 1)
-
-        //setActionsStack(newRedoStack)
-        //sessionStorage.setItem("redoStack", JSON.stringify(newRedoStack))
+  
         return
       }
     }
@@ -858,46 +766,13 @@ const Whiteboard = () => {
     const file = event.target.files[0];
     setImageFile(event.target.files[0])
     sessionStorage.setItem("pageState", canvasRef.current.toDataURL())
-    // const reader = new FileReader();
-    
-    // reader.onload = (e) => {
-    //   const imageUrl = e.target.result;
-    //   setImageData(imageUrl);
-    //   const img = new Image();
-
-    //   img.onload = () => {
-    //     context.drawImage(img, 0, 0);
-    //     setImageData(null)
-    //     setImageInputRefresh(false)
-    //     pushActionsStack(canvasRef.current.toDataURL(), currentPage, 0, 0)
-    //     sckt.emit("syncImage", imageUrl, currentPage);
-    //   };
-
-    //   img.src = imageUrl;
-    // };
-
-    // reader.readAsDataURL(file);
-    // const dataURL = canvasRef.current.toDataURL();
-    
-    //clearBoardPageSwitch()
-    //updateBoard(dataURL)
-    //setActionsStack(prev => [...prev, {dataURL, page: currentPage}])
+  
   };
 
   function fixImage(){
-    // const { offsetX, offsetY } = e.nativeEvent;
-    // console.log(offsetX, offsetY);
+   
     if(imageFile){
-    // const reader = new FileReader();
-    console.log("in");
-    // reader.onload = (e) => {
-    //   const imageUrl = e.target.result;
-    //   setImageData(imageUrl);
-    //   const img = new Image();
-
-    //   img.onload = () => {
-    //     context.drawImage(img, offsetX, offsetY, 100, 100);
-        
+    
         setImageInputRefresh(false)
         pushActionsStack(canvasRef.current.toDataURL(), currentPage, imageX, imageY)
         sckt.emit("syncImage", imageData, currentPage, imageX, imageY, imageWidth, imageHeight, canvasRef.current.toDataURL());
@@ -908,12 +783,6 @@ const Whiteboard = () => {
         setImageWidth(100)
         setImageHeight(100)
 
-  //     };
-
-  //     img.src = imageUrl;
-  //   };
-
-  //   reader.readAsDataURL(imageFile);
     }
   }
 
