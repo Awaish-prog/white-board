@@ -14,6 +14,7 @@ import { PiTextTBold } from "react-icons/pi"
 import { RiAddCircleFill } from "react-icons/ri"
 import { CgMenu } from "react-icons/cg"
 import { GrClose } from "react-icons/gr"
+import CircularProgress from '@mui/material/CircularProgress';
 import "./WhiteBoard.css"
 
 
@@ -47,6 +48,8 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
   const [ snapShot, setSnapShot ] = useState(null)
   const [open, setOpen] = useState(false)
   const [ textBox, setTextBox ] = useState(false)
+  const [ wrongLink, setWrongLink ] = useState(false)
+
   const blue = '#1718F1'
   const yellow = '#FFC701'
   let canvas
@@ -57,6 +60,7 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
   
 
   function updateBoard(data){
+    
     canvas = canvasRef.current;
     ctx = canvas.getContext('2d');
     setContext(ctx);
@@ -71,33 +75,34 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
   }
 
   function pushActionsStack(dataURL, page, x = -1, y = -1){
+    
     addInStack("undoStack", { dataURL, page, x, y })
   }
 
-  function pushRedoStack({ dataURL, currentPageSource, x, y, index }){
-    //setRedoStack(prev => [...prev, { dataURL, page: currentPageSource, x, y, index }])
-  }
+ 
 
   const startTextMode = (e) => {
+    
     setShapeMode(false)
     setDrawing(false);
     setTextMode(true);
-    const { offsetX, offsetY } = e.nativeEvent;
-    //setTextPosition({ x: offsetX, y: offsetY });
+   
   };
 
   const handleTextChange = (e) => {
+    
     setText(e.target.value);
   };
 
   const addText = () => {
+    
     context.font = '16px Arial';
     context.fillText(text, textPosition.x, textPosition.y + 22);
     setText('');
     setTextBox(false)
     const dataURL = canvasRef.current.toDataURL();
     pushActionsStack(dataURL, currentPage)
-    sckt.emit("addText", currentPage, dataURL)
+    sckt.emit("addText", currentPage, dataURL, window.location.href)
   };
 
   
@@ -205,8 +210,7 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
         setContexts(boardData.contexts)
         setPages(boardData.pages)
         setImages(boardData.images)
-        // sessionStorage.setItem("undoStack", JSON.stringify(boardData.undoStack))
-        // sessionStorage.setItem("redoStack", JSON.stringify(boardData.redoStack))
+        
         
         for(let i = 0; i < boardData.images.length; i++){
           if(boardData.images[i] && 0 === boardData.images[i].page){
@@ -214,6 +218,7 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
             renderNewPageImage(boardData.images[i])
           }
         }
+        
         updateBoard(boardData.contexts[0])
       })
 
@@ -329,7 +334,9 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
       setContexts(prev => [...prev, null])
     })
 
-    
+    sckt.on("wrongLink", () => {
+      setWrongLink(true)
+    })    
     
 
   
@@ -337,38 +344,30 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
     return () => {
         sckt.off("received");
         sckt.off("addPage")
+        sckt.off("wrongLink")
     }
   }, []);
 
   function setUpSocket(){
     const socket = io('http://localhost:8001'); // 'https://app.tutorly.com'
-    socket.emit("joinWhiteBoard", "board");
+    socket.emit("joinWhiteBoard", window.location.href);
     return socket;
   }
 
   function addInStack(stackName, item){
-    // let newStack = JSON.parse(sessionStorage.getItem(stackName))
-    // if(!newStack){
-    //   sessionStorage.setItem(stackName, JSON.stringify([]))
-    //   newStack = JSON.parse(sessionStorage.getItem(stackName))
-    // }
-    // newStack.push(item)
-    // sessionStorage.setItem(stackName, JSON.stringify(newStack))
-
+    
     insertInStack(stackName, item)
     
   }
 
   function removeFromStack(stackName, index){
-    // console.log(index);
-    // const newStack = JSON.parse(sessionStorage.getItem(stackName))
-    // newStack.splice(index, 1)
-    // sessionStorage.setItem(stackName, JSON.stringify(newStack))
+    
 
     deleteFromStack(stackName, index)
   }
 
   const startDrawing = (e) => {
+   
     if(imageFile) { return }
     if (textMode){
         const { offsetX, offsetY } = e.nativeEvent;
@@ -390,6 +389,7 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
   };
 
   const draw = (e) => {
+    
     if(imageFile) { return }
 
     if(shapeMode && drawing){
@@ -418,6 +418,7 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
   };
 
   function eraseDataWithArray(eraserData, currentPageSource, dataURL){
+   
     if(context && (currentPageSource === Number(sessionStorage.getItem("currentPage")) || (currentPageSource === 0 && !sessionStorage.getItem("currentPage")))){
         for(let i = 0; i < eraserData.length; i++){
             context.clearRect(eraserData[i][0], eraserData[i][1], eraserData[i][2], eraserData[i][3]);
@@ -432,6 +433,7 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
   }
 
   const stopDrawing = () => {
+   
     if(imageFile) { return }
 
     if(shapeMode){
@@ -453,6 +455,7 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
   };
 
   const clearBoard = () => {
+   
     context.clearRect(0, 0, context.canvas.width, context.canvas.height);
     eraserData.push([0, 0, context.canvas.width, context.canvas.height])
     syncErasedData()
@@ -461,46 +464,55 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
     pushActionsStack(dataURL, currentPage)
   };
   const clearBoardPageSwitch = () => {
+    
     context.clearRect(0, 0, context.canvas.width, context.canvas.height);
   };
 
   const toggleEraserFalse = () => {
+    
     setShapeMode(false)
     setTextMode(false)
     setEraser(false);
   };
 
   const toggleEraserTrue = () => {
+    
     setShapeMode(false)
     setTextMode(false)
     setEraser(true);
   };
 
   const handlePencilSizeChange = (e) => {
+    
     setPencilSize(parseInt(e.target.value));
   };
 
   const handleEraserSizeChange = (e) => {
+    
     setEraserSize(parseInt(e.target.value));
   };
 
   const handlePencilColorChange = (e) => {
+    
     setPencilColor(e.target.value);
   };
 
   const sendData = () => {
+    
     const dataURL = canvasRef.current.toDataURL();
-    sckt.emit("syncBoard", dataURL, currentPage);
+    sckt.emit("syncBoard", dataURL, currentPage, window.location.href);
   };
 
   const syncErasedData = () => {
+    
     const dataURL = canvasRef.current.toDataURL();
-    sckt.emit("syncErasedData", eraserData, currentPage, dataURL)
+    sckt.emit("syncErasedData", eraserData, currentPage, dataURL, window.location.href)
   }
 
   
   
   const drawShape = (clearUI = true) => {
+    
     const { x: startX, y: startY } = shapeStartPos;
     const { x: endX, y: endY } = shapeEndPos;
 
@@ -632,6 +644,7 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
   };
   const setShape = (shape) => {
     
+    
     setTextMode(false)
     setDrawing(false)
     setEraser(false)
@@ -640,6 +653,7 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
   }
 
   function renderNewPageImage(imageData){
+    
     const img = new Image();
     console.log("In render", imageData);
     img.onload = () => {
@@ -650,6 +664,7 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
   }
 
   function changePage(page){
+    
     if(page === currentPage) { return }
 
     const dataURL = canvasRef.current.toDataURL();
@@ -673,14 +688,16 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
   }
 
   function addPage(){
+    
     setPages(prev => [...prev, prev[prev.length - 1] + 1])
     setContexts(prev => [...prev, null])
-    sckt.emit("addPage");
+    sckt.emit("addPage", window.location.href);
   }
 
   
 
   function undo(){
+    
 
     const actionsStack = undoStack // JSON.parse(sessionStorage.getItem("undoStack"))
     
@@ -729,19 +746,19 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
         clearBoardPageSwitch()
         updateBoard(actionsStack[i].dataURL)
         console.log(x, y);
-        sckt.emit("undo", actionsStack[i].dataURL, currentPage, x, y, dataIndex, obj)
+        sckt.emit("undo", actionsStack[i].dataURL, currentPage, x, y, dataIndex, obj, window.location.href)
         return
       }
     }
 
     clearBoardPageSwitch()
     const dataURL = canvasRef.current.toDataURL()
-    sckt.emit("undo", dataURL, currentPage, x, y, dataIndex, obj)
+    sckt.emit("undo", dataURL, currentPage, x, y, dataIndex, obj, window.location.href)
     
   }
 
   function redo(){
-
+   
     const redoStack1 = redoStack //JSON.parse(sessionStorage.getItem("redoStack"))
 
     if(!redoStack1.length) { return }
@@ -751,7 +768,7 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
 
         clearBoardPageSwitch()
         updateBoard(redoStack1[i].dataURL)
-        sckt.emit("redo", redoStack1[i], i)
+        sckt.emit("redo", redoStack1[i], i, window.location.href)
 
         addInStack("undoStack", redoStack1[i])
 
@@ -763,6 +780,7 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
   }
 
   const handleImageUpload = (event) => {
+   
     const file = event.target.files[0];
     setImageFile(event.target.files[0])
     sessionStorage.setItem("pageState", canvasRef.current.toDataURL())
@@ -770,12 +788,13 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
   };
 
   function fixImage(){
+    
    
     if(imageFile){
     
         setImageInputRefresh(false)
         pushActionsStack(canvasRef.current.toDataURL(), currentPage, imageX, imageY)
-        sckt.emit("syncImage", imageData, currentPage, imageX, imageY, imageWidth, imageHeight, canvasRef.current.toDataURL());
+        sckt.emit("syncImage", imageData, currentPage, imageX, imageY, imageWidth, imageHeight, canvasRef.current.toDataURL(), window.location.href);
         setImageData(null)
         setImageFile(null)
         setImageX(0)
@@ -787,6 +806,7 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
   }
 
   function placeImage(e){
+   
     
     if(imageFile){
 
@@ -814,6 +834,7 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
   }
   }
   function redrawImage(){
+    
     if(imageFile){
 
       clearBoardPageSwitch()
@@ -836,18 +857,22 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
     }
   }
   function changeImageHeight(e){
+    
     setImageHeight(e.target.value)
   }
 
   function changeImageWidth(e){
+    
     setImageWidth(e.target.value)
   }
 
   function toggleImageUpload(){
+    
     setImageInputRefresh(prev => !prev)
   }
 
   function dropImage(){
+    
     setImageInputRefresh(false)
     setImageData(null)
     setImageFile(null)
@@ -860,13 +885,23 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
   }
 
   function saveData(){
-    sckt.emit("saveData", "board")
+    
+    sckt.emit("saveData", window.location.href)
+  }
+
+  function openMenu(){
+    setOpen(true)
   }
   return (
+    
+    wrongLink ?
+    <h1>This page link is invalid</h1>
+    :
     <div className={textMode ? "text-cursor" : eraser ? "eraser-cursor" : "pen-cursor"}>
+      
       {imageFile && <p className="flex-div message-div"><button className="z-index button" onClick={dropImage} >Drop image</button></p>}
       <div className='flex-div menu-bar'>
-      <div className="z-index" onClick={() => setOpen(true)}>
+      <div className="z-index" onClick={openMenu}>
             <CgMenu size = {25} color = {blue} />
       </div>
       </div>
@@ -980,6 +1015,7 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
           <button className="z-index button image-buttons" onClick={fixImage}>Fix Image</button>
         </div>
       </div>}
+      
     <div className="canvas-container">
       <canvas
         ref={canvasRef}
@@ -990,8 +1026,8 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
         onClick={placeImage}
       />
     </div>
-      
-</div>
+    </div>
+
 );
 };
 
