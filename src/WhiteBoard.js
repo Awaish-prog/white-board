@@ -15,6 +15,7 @@ import { RiAddCircleFill } from "react-icons/ri"
 import { CgMenu } from "react-icons/cg"
 import { GrClose } from "react-icons/gr"
 import CircularProgress from '@mui/material/CircularProgress';
+import { jsPDF } from "jspdf";
 import "./WhiteBoard.css"
 
 
@@ -50,6 +51,7 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
   const [ textBox, setTextBox ] = useState(false)
   const [ wrongLink, setWrongLink ] = useState(false)
   const [ loader, setLoader ] = useState(true)
+  const [ dataLimit, setDataLimit ] = useState(false)
   const blue = '#1718F1'
   const yellow = '#FFC701'
   let canvas
@@ -299,6 +301,10 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
    
     
     resizeCanvas();
+
+    sckt.on("dataLimit", () => {
+      setDataLimit(true)
+    })
     
     sckt.on("received", ({ dataURL, currentPageSource }) => {
       
@@ -347,7 +353,7 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
   }, []);
 
   function setUpSocket(){
-    const socket = io('http://localhost:8001'); // 'https://app.tutorly.com'
+    const socket = io('https://app.tutorly.com'); // 'https://app.tutorly.com'
     socket.emit("joinWhiteBoard", window.location.href);
     return socket;
   }
@@ -520,7 +526,7 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
 
   
   
-  const drawShape = (clearUI = true) => {
+  const drawShape = () => {
     
     const { x: startX, y: startY } = shapeStartPos;
     const { x: endX, y: endY } = shapeEndPos;
@@ -899,18 +905,57 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
     updateBoard(sessionStorage.getItem("pageState"))
   }
 
-  function saveData(){
-    
-    sckt.emit("saveData", window.location.href)
-  }
 
   function openMenu(){
     setOpen(true)
   }
+
+  function downloadPdf(){
+
+    const dataURLs = []
+
+    for(let i = 0; i < contexts.length; i++){
+      if(i === currentPage){
+        dataURLs.push(canvasRef.current.toDataURL())
+      }
+      else{
+        dataURLs.push(contexts[i])
+      }
+    }
+
+    const browserWidth = window.innerWidth;
+    const browserHeight = window.innerHeight;
+
+    const pdf = new jsPDF({
+      orientation: browserWidth > browserHeight ? "landscape" : "portrait",
+      unit: "px",
+      format: [browserWidth, browserHeight],
+    });
+
+    const addImageToPDF = (imageData) => {
+      pdf.addImage(imageData, "PNG", 0, 0, browserWidth, browserHeight);
+    };
+
+    for(let i = 0; i < dataURLs.length; i++){
+      addImageToPDF(dataURLs[i]);
+      if(i !== dataURLs.length - 1){
+        pdf.addPage();
+      }
+    }
+    const date = new Date()
+    const name = "Paper_" + date.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }).replaceAll("/", "-") + ".pdf"
+
+    pdf.save(name);
+  }
+
+  
+
   return (
     
-    wrongLink ?
-    <h1>This page link is invalid</h1>
+    wrongLink || dataLimit ?
+    <div className = "invalidDiv">
+    {wrongLink ? <h1>This page link is invalid</h1> : <h1>This paper has exceeded its data limit please close this window and create a new board.</h1> }
+    </div>
     :
     
     <div className={textMode ? "text-cursor" : eraser ? "eraser-cursor" : "pen-cursor"}>
@@ -940,7 +985,7 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
           <label className="range-image-options">Pencil Color:
           <input className="z-index" type="color" value={pencilColor} onChange={handlePencilColorChange} />
           </label>
-          <button className="button" onClick={saveData}>Save</button>
+          <button className="button" onClick={downloadPdf}>Downlaod PDF</button>
           </div>
       </Drawer>
 
@@ -952,9 +997,9 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
           })
         }
         </div>
-        <div onClick={addPage} className={loader ? "add-page displayNone" : "add-page"}>
+        {pages.length < 10 && <div onClick={addPage} className={loader ? "add-page displayNone" : "add-page"}>
           <RiAddCircleFill color={blue} size={40} />
-        </div>
+        </div>}
       </div>
         {(textBox && textMode && textPosition.x !== 0 && textPosition.y !== 0) && (
         <div className="z-index" style={{ position: 'absolute', top: textPosition.y, left: textPosition.x}}>
