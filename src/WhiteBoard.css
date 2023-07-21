@@ -230,6 +230,10 @@ html, body, #root {
     color: var(--yellow);
     background-color: var(--blue);
 }
+
+.displayNone {
+    display: none;
+}
 @media (max-width: 900px) {
     .edit-options-container {
       left: 24vw

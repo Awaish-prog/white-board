@@ -49,7 +49,7 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
   const [open, setOpen] = useState(false)
   const [ textBox, setTextBox ] = useState(false)
   const [ wrongLink, setWrongLink ] = useState(false)
-
+  const [ loader, setLoader ] = useState(true)
   const blue = '#1718F1'
   const yellow = '#FFC701'
   let canvas
@@ -218,7 +218,7 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
             renderNewPageImage(boardData.images[i])
           }
         }
-        
+        setLoader(false)
         updateBoard(boardData.contexts[0])
       })
 
@@ -278,9 +278,7 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
   
     sckt = setUpSocket();
     sessionStorage.setItem("currentPage", 0)
-    // sessionStorage.setItem("redoStack", JSON.stringify([]))
-    // sessionStorage.setItem("undoStack", JSON.stringify([]))
-    //
+    
     initialiseStack("redoStack", [])
     initialiseStack("undoStack", [])
     
@@ -367,6 +365,9 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
   }
 
   const startDrawing = (e) => {
+    if(loader){
+      return
+    }
    
     if(imageFile) { return }
     if (textMode){
@@ -389,6 +390,10 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
   };
 
   const draw = (e) => {
+
+    if(loader){
+      return
+    }
     
     if(imageFile) { return }
 
@@ -433,6 +438,10 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
   }
 
   const stopDrawing = () => {
+
+    if(loader){
+      return
+    }
    
     if(imageFile) { return }
 
@@ -664,6 +673,9 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
   }
 
   function changePage(page){
+    if(loader){
+      return
+    }
     
     if(page === currentPage) { return }
 
@@ -807,6 +819,9 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
 
   function placeImage(e){
    
+    if(loader){
+      return
+    }
     
     if(imageFile){
 
@@ -897,11 +912,14 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
     wrongLink ?
     <h1>This page link is invalid</h1>
     :
+    
     <div className={textMode ? "text-cursor" : eraser ? "eraser-cursor" : "pen-cursor"}>
-      
+      {loader && <div className="loaderDiv">
+        <CircularProgress size={100} />
+      </div>}
       {imageFile && <p className="flex-div message-div"><button className="z-index button" onClick={dropImage} >Drop image</button></p>}
       <div className='flex-div menu-bar'>
-      <div className="z-index" onClick={openMenu}>
+      <div className={loader ? "z-index displayNone" : "z-index"} onClick={openMenu}>
             <CgMenu size = {25} color = {blue} />
       </div>
       </div>
@@ -934,7 +952,7 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
           })
         }
         </div>
-        <div onClick={addPage} className="add-page">
+        <div onClick={addPage} className={loader ? "add-page displayNone" : "add-page"}>
           <RiAddCircleFill color={blue} size={40} />
         </div>
       </div>
@@ -943,54 +961,55 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
           <input className="z-index" type="text" value={text} onChange={handleTextChange}/>
           <button className="z-index button" onClick={addText}>Add Text</button>
         </div>
-      )}
-      <div className="clear-div">
+        )}
+      <div className={loader ? "clear-div displayNone" : "clear-div"}>
         <button onClick={clearBoard} className="z-index button">Clear Page</button>
       </div>
 
       <div className="edit-options-container">
       
-      <div onClick={startTextMode} className={textMode ? "edit-option edit-option-background" : "edit-option"}>
+      <div onClick={startTextMode} className={loader ? "displayNone " + (textMode ? "edit-option edit-option-background" : "edit-option") : (textMode ? "edit-option edit-option-background" : "edit-option")}>
         <PiTextTBold color={textMode ? yellow : blue} size={20} />
       </div>
 
-      <div onClick={toggleEraserFalse} className={(!eraser && !textMode && !shapeMode) ? "edit-option edit-option-background" : "edit-option"}>
+      <div onClick={toggleEraserFalse} className={loader ? "displayNone " + ((!eraser && !textMode && !shapeMode) ? "edit-option edit-option-background" : "edit-option") : ((!eraser && !textMode && !shapeMode) ? "edit-option edit-option-background" : "edit-option")}>
         <FaPencilAlt color={(!eraser && !textMode && !shapeMode) ? yellow : blue} size={20} />
       </div>
       
-      <div onClick={toggleEraserTrue} className={(eraser && !textMode && !shapeMode) ? "edit-option edit-option-background" : "edit-option"}>
+      <div onClick={toggleEraserTrue} className={loader ? "displayNone " + ((eraser && !textMode && !shapeMode) ? "edit-option edit-option-background" : "edit-option") : ((eraser && !textMode && !shapeMode) ? "edit-option edit-option-background" : "edit-option")}>
         <FaEraser color={(eraser && !textMode && !shapeMode) ? yellow : blue} size={20} />
       </div>
       
-      <div onClick={() => setShape('rectangle')} className={(!textMode && shapeMode && shapeType === 'rectangle') ? "edit-option edit-option-background" : "edit-option"}>
+      <div onClick={() => setShape('rectangle')} className={loader ? "displayNone " + ((!textMode && shapeMode && shapeType === 'rectangle') ? "edit-option edit-option-background" : "edit-option") : ((!textMode && shapeMode && shapeType === 'rectangle') ? "edit-option edit-option-background" : "edit-option")}>
         <MdOutlineRectangle color={(!textMode && shapeMode && shapeType === 'rectangle') ? yellow : blue} size={20} />
       </div>
 
         
-      <div onClick={() => setShape('triangle')} className={(!textMode && shapeMode && shapeType === 'triangle') ? "edit-option edit-option-background" : "edit-option"}>
+      <div onClick={() => setShape('triangle')} className={loader ? "displayNone " + ((!textMode && shapeMode && shapeType === 'triangle') ? "edit-option edit-option-background" : "edit-option") : ((!textMode && shapeMode && shapeType === 'triangle') ? "edit-option edit-option-background" : "edit-option")}>
         <BsTriangle color={(!textMode && shapeMode && shapeType === 'triangle') ? yellow : blue} size={20} />
       </div>
-      <div onClick={() => setShape('polygon')} className={(!textMode && shapeMode && shapeType === 'polygon') ? "edit-option edit-option-background" : "edit-option"}>
+      <div onClick={() => setShape('polygon')} className={loader ? "displayNone " + ((!textMode && shapeMode && shapeType === 'polygon') ? "edit-option edit-option-background" : "edit-option") : ((!textMode && shapeMode && shapeType === 'polygon') ? "edit-option edit-option-background" : "edit-option")}>
         <BsHexagon color={(!textMode && shapeMode && shapeType === 'polygon') ? yellow : blue} size={20} />
       </div>
-      <div onClick={() => setShape('pentagon')} className={(!textMode && shapeMode && shapeType === 'pentagon') ? "edit-option edit-option-background" : "edit-option"}>
+      <div onClick={() => setShape('pentagon')} className={loader ? "displayNone " + ((!textMode && shapeMode && shapeType === 'pentagon') ? "edit-option edit-option-background" : "edit-option") : ((!textMode && shapeMode && shapeType === 'pentagon') ? "edit-option edit-option-background" : "edit-option")}>
         <BsPentagon color={(!textMode && shapeMode && shapeType === 'pentagon') ? yellow : blue} size={20} />
       </div>
-      <div onClick={() => setShape('line')} className={(!textMode && shapeMode && shapeType === 'line') ? "edit-option edit-option-background" : "edit-option"}>
+      <div onClick={() => setShape('line')} className={loader ? "displayNone " + ((!textMode && shapeMode && shapeType === 'line') ? "edit-option edit-option-background" : "edit-option") : ((!textMode && shapeMode && shapeType === 'line') ? "edit-option edit-option-background" : "edit-option")}>
         <GiStraightPipe color={(!textMode && shapeMode && shapeType === 'line') ? yellow : blue} size={20} />
       </div>
-      <div onClick={() => setShape('arrow')} className={(!textMode && shapeMode && shapeType === 'arrow') ? "edit-option edit-option-background" : "edit-option"}>
+      <div onClick={() => setShape('arrow')} className={loader ? "displayNone " + ((!textMode && shapeMode && shapeType === 'arrow') ? "edit-option edit-option-background" : "edit-option") : ((!textMode && shapeMode && shapeType === 'arrow') ? "edit-option edit-option-background" : "edit-option")}>
         <BsArrowUpRight color={(!textMode && shapeMode && shapeType === 'arrow') ? yellow : blue} size={20} />
       </div>
-      <div onClick={() => setShape('circle')} className={(!textMode && shapeMode && shapeType === 'circle') ? "edit-option edit-option-background" : "edit-option"}>
+      <div onClick={() => setShape('circle')} className={loader ? "displayNone " + ((!textMode && shapeMode && shapeType === 'circle') ? "edit-option edit-option-background" : "edit-option") : ((!textMode && shapeMode && shapeType === 'circle') ? "edit-option edit-option-background" : "edit-option")}>
         <FiCircle color={(!textMode && shapeMode && shapeType === 'circle') ? yellow : blue} size={20} />
       </div>
       </div>
       <div className="undo-redo-options">
-        <button onClick={undo} className="z-index button">Undo</button>
-        <button onClick={redo} className="z-index button">Redo</button>
+        <button onClick={undo} className={loader ? "z-index button displayNone" : "z-index button"}>Undo</button>
+        <button onClick={redo} className={loader ? "z-index button displayNone" : "z-index button"}>Redo</button>
       </div>
-      <div className="range-image-options image-up">
+      
+      <div className={loader ? "range-image-options image-up displayNone" : "range-image-options image-up"}>
         {
           imageInputRefresh && <input className="z-index button file-input" type="file" accept="image/*" onChange={handleImageUpload} disabled={imageFile} />
         }
