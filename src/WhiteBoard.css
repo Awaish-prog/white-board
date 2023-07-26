@@ -52,6 +52,13 @@ html, body, #root {
     position: absolute;
     top: 0px
 }
+.canvas-container-second {
+    width: 98%;
+    height: 98%;
+    position: absolute;
+    top: 0px;
+    z-index: -20;
+}
 .page-numbers-container, .page-numbers {
     display: flex;
     flex-direction: column;

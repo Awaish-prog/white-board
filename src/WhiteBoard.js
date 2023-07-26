@@ -22,8 +22,10 @@ import "./WhiteBoard.css"
 let sckt;
 const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, deleteFromStack }) => {
   const canvasRef = useRef(null);
+  const canvasRefSecond = useRef(null);
   const [drawing, setDrawing] = useState(false);
   const [context, setContext] = useState(null);
+  const [contextSecond, setContextSecond] = useState(null);
   const [eraser, setEraser] = useState(false);
   const [pencilSize, setPencilSize] = useState(2);
   const [eraserSize, setEraserSize] = useState(10);
@@ -52,10 +54,17 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
   const [ wrongLink, setWrongLink ] = useState(false)
   const [ loader, setLoader ] = useState(true)
   const [ dataLimit, setDataLimit ] = useState(false)
+  // const [ select, setSelect ] = useState(false)
+  // const [ selectList, setSelectList ] = useState([])
+  // const [ selectedObject, setSelectedObject ] = useState(null)
+  const [horizontalLines, setHorizontalLines] = useState([0]);
+  const [ locked, setLocked ] = useState(false)
   const blue = '#1718F1'
   const yellow = '#FFC701'
   let canvas
   let ctx
+  let canvasSecond
+  let ctxSecond
   let eraserData = []
 
   
@@ -107,7 +116,91 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
     sckt.emit("addText", currentPage, dataURL, window.location.href)
   };
 
+  const drawGrid = (ctx, currentPage = 0) => {
+    const width = ctx.canvas.width;
+    const height = ctx.canvas.height;
+    ctx.clearRect(0, 0, width, height); // Clear the canvas
+
+    // Calculate the spacing between lines
+    const horizontalSpacing = Math.floor(width / (horizontalLines[currentPage] + 1));
+    const verticalSpacing = Math.floor(height / (horizontalLines[currentPage] + 1));
+
+    // Draw horizontal lines
+    ctx.strokeStyle = '#ccc';
+    
+    for (let i = 1; i <= horizontalLines[currentPage]; i++) {
+      const y = i * verticalSpacing;
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(width, y);
+      ctx.stroke();
+    }
+
+    // Draw vertical lines
+    for (let i = 1; i <= horizontalLines[currentPage]; i++) {
+      const x = i * horizontalSpacing;
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, height);
+      ctx.stroke();
+    }
+  };
+
+  const drawGridCurrentPage = (horizontalLine) => {
+    const canvas = canvasRefSecond.current;
+    const ctx = canvas.getContext('2d');
+    const parent = canvas.parentElement;
+    canvas.width = parent.offsetWidth;
+    canvas.height = parent.offsetHeight;
+    const width = ctx.canvas.width;
+    const height = ctx.canvas.height;
+    ctx.clearRect(0, 0, width, height); // Clear the canvas
+
+    // Calculate the spacing between lines
+    const horizontalSpacing = Math.floor(width / (horizontalLine + 1));
+    const verticalSpacing = Math.floor(height / (horizontalLine + 1));
+
+    // Draw horizontal lines
+    ctx.strokeStyle = '#ccc';
+    
+    for (let i = 1; i <= horizontalLine; i++) {
+      const y = i * verticalSpacing;
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(width, y);
+      ctx.stroke();
+    }
+
+    // Draw vertical lines
+    for (let i = 1; i <= horizontalLine; i++) {
+      const x = i * horizontalSpacing;
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, height);
+      ctx.stroke();
+    }
+  };
+
+  const handleHorizontalInputChange = (event) => {
+    const value = parseInt(event.target.value, 10);
+    setHorizontalLines((prev) => {
+      const newLines = [...prev]
+      newLines[currentPage] = value
+      return newLines
+    });
+  };
+
   
+  function applyGrid(page = 0){
+    const canvas = canvasRefSecond.current;
+    const ctx = canvas.getContext('2d');
+    const parent = canvas.parentElement;
+    canvas.width = parent.offsetWidth;
+    canvas.height = parent.offsetHeight;
+    console.log(horizontalLines);
+    drawGrid(ctx, page);
+  }
+
 
 
   useEffect(() => {
@@ -166,7 +259,6 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
         addInStack("redoStack", obj)
         
       
-        console.log(x, y);
         
         setImages((prev) => {
           if(!prev.length){
@@ -177,7 +269,7 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
           for(let i = 0; i < newImages.length; i++){
             if(newImages[i].x === x && newImages[i].y === y && newImages[i].page === currentPageSource){
               newImages.splice(i, 1)
-              console.log("found");
+            
               return newImages
             }
           }
@@ -212,7 +304,7 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
         setContexts(boardData.contexts)
         setPages(boardData.pages)
         setImages(boardData.images)
-        
+        setHorizontalLines(boardData.grid)
         
         for(let i = 0; i < boardData.images.length; i++){
           if(boardData.images[i] && 0 === boardData.images[i].page){
@@ -221,7 +313,9 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
           }
         }
         setLoader(false)
+        drawGridCurrentPage(boardData.grid[0])
         updateBoard(boardData.contexts[0])
+
       })
 
       sckt.on("syncImage", ({ imageData, currentPageSource, imageX, imageY, imageWidth, imageHeight, dataURL }) => {
@@ -256,6 +350,18 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
           img.src = imageData;
         }
       })
+
+      sckt.on("Grid", ({ page, grid }) => {
+        if(page === Number(sessionStorage.getItem("currentPage")) || (page === 0 && !sessionStorage.getItem("currentPage"))){
+          
+          drawGridCurrentPage(grid)
+        }
+        setHorizontalLines((prev) => {
+          const newHorL = [...prev]
+          newHorL[page] = grid
+          return newHorL
+        })
+      })
     }
 
     
@@ -268,6 +374,7 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
         sckt.off("redo")
         sckt.off("syncImage")
         sckt.off("Joined")
+        sckt.off("Grid")
     }
   }, [context])
 
@@ -277,6 +384,10 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
     canvas = canvasRef.current;
     ctx = canvas.getContext('2d');
     setContext(ctx);
+
+    canvasSecond = canvasRefSecond.current;
+    ctxSecond = canvasSecond.getContext('2d');
+    setContextSecond(ctxSecond);
   
     sckt = setUpSocket();
     sessionStorage.setItem("currentPage", 0)
@@ -335,6 +446,7 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
 
     sckt.on("addPage", () => {
       setPages(prev => [...prev, prev[prev.length - 1] + 1])
+      setHorizontalLines(prev => [...prev, 0])
       setContexts(prev => [...prev, null])
     })
 
@@ -342,20 +454,40 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
       setWrongLink(true)
     })    
     
+    sckt.on("lock", () => {
+      setLocked(true)
+    })
 
-  
+    
 
     return () => {
         sckt.off("received");
         sckt.off("addPage")
         sckt.off("wrongLink")
+        
     }
   }, []);
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    }
+  })
 
   function setUpSocket(){
     const socket = io('https://app.tutorly.com'); // 'https://app.tutorly.com'
     socket.emit("joinWhiteBoard", window.location.href);
     return socket;
+  }
+
+  function handleKeyDown(event){
+    if (event.ctrlKey && event.key === 'z') {
+      undo();
+    }
+    else if (event.ctrlKey && event.key === 'y') {
+      redo();
+    }
   }
 
   function addInStack(stackName, item){
@@ -364,17 +496,20 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
     
   }
 
-  function removeFromStack(stackName, index){
-    
+  
 
+  function removeFromStack(stackName, index){
     deleteFromStack(stackName, index)
   }
 
   const startDrawing = (e) => {
+    
     if(loader){
       return
     }
-   
+
+    if(locked) { return }
+  
     if(imageFile) { return }
     if (textMode){
         const { offsetX, offsetY } = e.nativeEvent;
@@ -392,6 +527,8 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
     }
     context.beginPath();
     context.moveTo(offsetX, offsetY);
+    
+    
     setDrawing(true);
   };
 
@@ -401,6 +538,8 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
       return
     }
     
+    if(locked) { return }
+
     if(imageFile) { return }
 
     if(shapeMode && drawing){
@@ -428,6 +567,8 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
     }
   };
 
+  
+
   function eraseDataWithArray(eraserData, currentPageSource, dataURL){
    
     if(context && (currentPageSource === Number(sessionStorage.getItem("currentPage")) || (currentPageSource === 0 && !sessionStorage.getItem("currentPage")))){
@@ -448,6 +589,8 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
     if(loader){
       return
     }
+
+    if(locked) { return }
    
     if(imageFile) { return }
 
@@ -466,10 +609,12 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
         eraserData = []
     }
     const dataURL = canvasRef.current.toDataURL();
+    
     pushActionsStack(dataURL, currentPage)
   };
 
   const clearBoard = () => {
+    if(locked) { return }
    
     context.clearRect(0, 0, context.canvas.width, context.canvas.height);
     eraserData.push([0, 0, context.canvas.width, context.canvas.height])
@@ -534,7 +679,7 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
   
     if(snapShot){
       context.putImageData(snapShot, 0, 0)
-      console.log("Image Data");
+  
     }
 
     switch (shapeType) {
@@ -670,7 +815,7 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
   function renderNewPageImage(imageData){
     
     const img = new Image();
-    console.log("In render", imageData);
+
     img.onload = () => {
       context.drawImage(img, imageData.x, imageData.y, Number(imageData.imageWidth), Number(imageData.imageHeight));
     }
@@ -693,7 +838,7 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
     })
     clearBoardPageSwitch()
     
-    console.log(images);
+
     for(let i = 0; i < images.length; i++){
       if(images[i] && page === images[i].page){
       
@@ -701,13 +846,16 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
       }
     }
     updateBoard(contexts[page])
+    applyGrid(page)
     setCurrentPage(page)
     sessionStorage.setItem("currentPage", page)
   }
 
   function addPage(){
-    
+    if(locked) { return }
+
     setPages(prev => [...prev, prev[prev.length - 1] + 1])
+    setHorizontalLines(prev => [...prev, 0])
     setContexts(prev => [...prev, null])
     sckt.emit("addPage", window.location.href);
   }
@@ -716,10 +864,10 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
 
   function undo(){
     
-
-    const actionsStack = undoStack // JSON.parse(sessionStorage.getItem("undoStack"))
+    if(locked) { return }
+    const actionsStack = undoStack 
     
-
+    
     if(!actionsStack.length) { return }
 
     let dataIndex = -1
@@ -763,7 +911,7 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
    
         clearBoardPageSwitch()
         updateBoard(actionsStack[i].dataURL)
-        console.log(x, y);
+      
         sckt.emit("undo", actionsStack[i].dataURL, currentPage, x, y, dataIndex, obj, window.location.href)
         return
       }
@@ -776,11 +924,13 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
   }
 
   function redo(){
+
+    if(locked) { return }
    
-    const redoStack1 = redoStack //JSON.parse(sessionStorage.getItem("redoStack"))
+    const redoStack1 = redoStack 
 
     if(!redoStack1.length) { return }
-    console.log(redoStack1);
+  
     for(let i = redoStack1.length - 1; i >= 0; i--){
       if(redoStack1[i].page === currentPage){
 
@@ -819,22 +969,40 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
         setImageY(0)
         setImageWidth(100)
         setImageHeight(100)
-
+        // setSelectedObject(null)
     }
   }
+
+  // function drawSelectedObject(){
+    
+  // }
 
   function placeImage(e){
    
     if(loader){
       return
     }
+
+    if(locked) { return }
+
+
+    // if(selectedObject){
+    //   drawSelectedObject()
+    // }
+    // if(select && selectList[0]){
+    //   const { offsetX, offsetY } = e.nativeEvent;
+    //   const snapImage = context.getImageData(selectList[0].posX, selectList[0].posY, selectList[0].imageW, selectList[0].imageH)
+    //   context.clearRect(selectList[0].posX, selectList[0].posY, selectList[0].imageW, selectList[0].imageH)
+    //   context.putImageData(snapImage, offsetX, offsetY)
+    // }
+    
+
     
     if(imageFile){
 
     clearBoardPageSwitch()
     updateBoard(sessionStorage.getItem("pageState"))
     const { offsetX, offsetY } = e.nativeEvent;
-    console.log(offsetX, offsetY);
     setImageX(offsetX)
     setImageY(offsetY)
     const reader = new FileReader();
@@ -846,6 +1014,28 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
 
       img.onload = () => {
         context.drawImage(img, offsetX, offsetY, imageWidth, imageHeight);
+        // console.log(offsetX, offsetY, imageWidth, imageHeight);
+        // for(let i = 0; i < selectList.length; i++){
+        //   if(!selectedObject){
+        //     setSelectList(prev => [...prev, {posX: Number(offsetX), posY: Number(offsetY), imageW: imageWidth, imageH: imageHeight}])
+        //     setSelectedObject({posX: Number(offsetX), posY: Number(offsetY), imageW: imageWidth, imageH: imageHeight})
+        //     break
+        //   }
+        //   if(selectedObject.posX === selectList[i].posX && selectedObject.posY === selectList[i].posY && selectedObject.imageW === selectList[i].imageW && selectedObject.imageH === selectList[i].imageH){
+        //     setSelectList((prev) => {
+        //       const newList = [...prev]
+        //       newList[i].posX = Number(offsetX)
+        //       newList[i].posY = Number(offsetY)
+        //       newList[i].imageW = Number(imageWidth)
+        //       newList[i].imageH = Number(imageHeight)
+        //       return newList
+        //     })
+        //     setSelectedObject({posX: Number(offsetX), posY: Number(offsetY), imageW: Number(imageWidth), imageH: Number(imageHeight)})
+        //     return
+        //   }
+        // }
+        // setSelectList(prev => [...prev, {posX: Number(offsetX), posY: Number(offsetY), imageW: imageWidth, imageH: imageHeight}])
+        // setSelectedObject({posX: Number(offsetX), posY: Number(offsetY), imageW: imageWidth, imageH: imageHeight})
       };
 
       img.src = imageUrl;
@@ -869,6 +1059,27 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
   
         img.onload = () => {
           context.drawImage(img, imageX, imageY, imageWidth, imageHeight);
+          // for(let i = 0; i < selectList.length; i++){
+          //   if(!selectedObject){
+          //     setSelectList(prev => [...prev, {posX: Number(imageX), posY: Number(imageY), imageW: imageWidth, imageH: imageHeight}])
+          //     setSelectedObject({posX: Number(imageX), posY: Number(imageY), imageW: imageWidth, imageH: imageHeight})
+          //     break
+          //   }
+          //   if(selectedObject.posX === selectList[i].posX && selectedObject.posY === selectList[i].posY && selectedObject.imageW === selectList[i].imageW && selectedObject.imageH === selectList[i].imageH){
+          //     setSelectList((prev) => {
+          //       const newList = [...prev]
+          //       newList[i].posX = Number(imageX)
+          //       newList[i].posY = Number(imageY)
+          //       newList[i].imageW = Number(imageWidth)
+          //       newList[i].imageH = Number(imageHeight)
+          //       return newList
+          //     })
+          //     setSelectedObject({posX: Number(imageX), posY: Number(imageY), imageW: Number(imageWidth), imageH: Number(imageHeight)})
+          //     return
+          //   }
+          // }
+          // setSelectList(prev => [...prev, {posX: Number(imageX), posY: Number(imageY), imageW: imageWidth, imageH: imageHeight}])
+          // setSelectedObject({posX: Number(imageX), posY: Number(imageY), imageW: imageWidth, imageH: imageHeight})
         };
   
         img.src = imageUrl;
@@ -888,6 +1099,8 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
   }
 
   function toggleImageUpload(){
+
+    if(locked) { return }
     
     setImageInputRefresh(prev => !prev)
   }
@@ -948,11 +1161,26 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
     pdf.save(name);
   }
 
+  // function dup(){
+  //   setSelect(prev => !prev)
+  // }
+
+  function applyGridWithPage(){
+
+    if(locked) { return }
+    sckt.emit("Grid", currentPage, horizontalLines[currentPage], window.location.href)
+    applyGrid(currentPage)
+  }
+
+  function lockBoard(){
+    sckt.emit("lock", window.location.href)
+  }
+
   
 
   return (
     
-    wrongLink || dataLimit ?
+    (wrongLink || dataLimit) ?
     <div className = "invalidDiv">
     {wrongLink ? <h1>This page link is invalid</h1> : <h1>This paper has exceeded its data limit please close this window and create a new board.</h1> }
     </div>
@@ -985,7 +1213,14 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
           <label className="range-image-options">Pencil Color:
           <input className="z-index" type="color" value={pencilColor} onChange={handlePencilColorChange} />
           </label>
-          <button className="button" onClick={downloadPdf}>Downlaod PDF</button>
+          <button className="button" onClick={downloadPdf}>Download PDF</button>
+          <div>
+            <label>
+              Grid Input:
+              <input type="number" value={horizontalLines[currentPage]} onChange={handleHorizontalInputChange} />
+            </label>
+          </div>
+          <button className="button" onClick={applyGridWithPage}>Apply Grid</button>
           </div>
       </Drawer>
 
@@ -1088,6 +1323,12 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
         onMouseMove={draw}
         onMouseUp={stopDrawing}
         onClick={placeImage}
+      />
+    </div>
+    <div className="canvas-container-second">
+      <canvas
+        ref={canvasRefSecond}
+        style={{ zIndex: '-20'}}
       />
     </div>
     </div>
