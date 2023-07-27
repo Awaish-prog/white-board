@@ -57,7 +57,10 @@ html, body, #root {
     height: 98%;
     position: absolute;
     top: 0px;
+    left: 0px;
     z-index: -20;
+    margin: 0;
+    box-sizing: border-box;
 }
 .page-numbers-container, .page-numbers {
     display: flex;

@@ -117,13 +117,13 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
   };
 
   const drawGrid = (ctx, currentPage = 0) => {
-    const width = ctx.canvas.width;
+    const width = ctx.canvas.width + 1000;
     const height = ctx.canvas.height;
     ctx.clearRect(0, 0, width, height); // Clear the canvas
 
     // Calculate the spacing between lines
     const horizontalSpacing = Math.floor(width / (horizontalLines[currentPage] + 1));
-    const verticalSpacing = Math.floor(height / (horizontalLines[currentPage] + 1));
+    const verticalSpacing = Math.floor(width / (horizontalLines[currentPage] + 1));
 
     // Draw horizontal lines
     ctx.strokeStyle = '#ccc';
@@ -152,13 +152,13 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
     const parent = canvas.parentElement;
     canvas.width = parent.offsetWidth;
     canvas.height = parent.offsetHeight;
-    const width = ctx.canvas.width;
+    const width = ctx.canvas.width + 1000;
     const height = ctx.canvas.height;
     ctx.clearRect(0, 0, width, height); // Clear the canvas
 
     // Calculate the spacing between lines
     const horizontalSpacing = Math.floor(width / (horizontalLine + 1));
-    const verticalSpacing = Math.floor(height / (horizontalLine + 1));
+    const verticalSpacing = Math.floor(width / (horizontalLine + 1));
 
     // Draw horizontal lines
     ctx.strokeStyle = '#ccc';
@@ -197,7 +197,6 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
     const parent = canvas.parentElement;
     canvas.width = parent.offsetWidth;
     canvas.height = parent.offsetHeight;
-    console.log(horizontalLines);
     drawGrid(ctx, page);
   }
 
@@ -459,12 +458,10 @@ const Whiteboard = ({ undoStack, redoStack, initialiseStack, insertInStack, dele
     })
 
     
-
     return () => {
         sckt.off("received");
         sckt.off("addPage")
         sckt.off("wrongLink")
-        
     }
   }, []);
 
